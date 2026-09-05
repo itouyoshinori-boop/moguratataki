@@ -1,0 +1,641 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>介護用 モグラたたき Deluxe</title>
+  <style>
+    * { box-sizing: border-box; }
+    body {
+      background-color: #e8f5e9;
+      color: #333;
+      font-family: 'Hiragino Kaku Gothic ProN', 'メイリオ', sans-serif;
+      text-align: center;
+      margin: 0;
+      padding: 15px 10px;
+      user-select: none;
+      touch-action: manipulation;
+    }
+
+    h1 {
+      font-size: 32px;
+      margin: 10px 0;
+      color: #2e7d32;
+    }
+
+    /* 画面切り替え用 */
+    .screen {
+      display: none;
+    }
+    .screen.active {
+      display: block;
+    }
+
+    /* メニュー画面 */
+    .menu-card {
+      background: #ffffff;
+      border: 4px solid #81c784;
+      border-radius: 20px;
+      max-width: 500px;
+      margin: 20px auto;
+      padding: 25px 20px;
+      box-shadow: 0 6px 12px rgba(0,0,0,0.1);
+    }
+
+    .menu-title {
+      font-size: 22px;
+      font-weight: bold;
+      color: #1b5e20;
+      margin-bottom: 12px;
+      margin-top: 20px;
+    }
+    .menu-title:first-child {
+      margin-top: 0;
+    }
+
+    .option-group {
+      display: flex;
+      justify-content: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      flex-wrap: wrap;
+    }
+
+    .opt-btn {
+      font-size: 20px;
+      font-weight: bold;
+      padding: 12px 24px;
+      border: 3px solid #ccc;
+      background-color: #f5f5f5;
+      color: #555;
+      border-radius: 30px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .opt-btn.selected {
+      background-color: #4caf50;
+      color: white;
+      border-color: #2e7d32;
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+    }
+
+    .start-menu-btn {
+      font-size: 28px;
+      font-weight: bold;
+      padding: 15px 45px;
+      background: #ff9800;
+      color: white;
+      border: none;
+      border-radius: 40px;
+      cursor: pointer;
+      box-shadow: 0 6px 0 #b26a00;
+      margin-top: 10px;
+    }
+    .start-menu-btn:active {
+      transform: translateY(4px);
+      box-shadow: 0 2px 0 #b26a00;
+    }
+
+    .key-guide-box {
+      margin-top: 20px;
+      padding: 12px;
+      background: #f1f8e9;
+      border-radius: 10px;
+      font-size: 15px;
+      color: #333;
+      text-align: left;
+      line-height: 1.6;
+    }
+
+    /* ゲーム画面 */
+    .score-container {
+      display: flex;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 15px;
+      flex-wrap: wrap;
+    }
+
+    .score-board {
+      font-size: 24px;
+      font-weight: bold;
+      background: #ffffff;
+      border: 3px solid #81c784;
+      padding: 8px 18px;
+      border-radius: 15px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      min-width: 200px;
+    }
+    .score-board span { color: #d81b60; font-size: 32px; }
+    .score-board.p2-board { border-color: #64b5f6; }
+    .score-board.p2-board span { color: #1976d2; }
+
+    /* モグラの配置エリア */
+    .game-area {
+      display: flex;
+      justify-content: center;
+      gap: 30px;
+      max-width: 1000px;
+      margin: 0 auto;
+      flex-wrap: wrap;
+    }
+
+    .player-zone {
+      flex: 1;
+      min-width: 320px;
+      max-width: 480px;
+      background: rgba(255, 255, 255, 0.4);
+      padding: 12px;
+      border-radius: 20px;
+      border: 2px dashed #a5d6a7;
+    }
+    .player-zone.p2-zone {
+      border-color: #90caf9;
+    }
+
+    .player-tag {
+      font-size: 22px;
+      font-weight: bold;
+      margin-bottom: 10px;
+      color: #2e7d32;
+    }
+    .p2-zone .player-tag {
+      color: #1565c0;
+    }
+
+    .hole-container {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 12px;
+    }
+    .row-top {
+      display: flex;
+      justify-content: center;
+      gap: 15px;
+      width: 100%;
+    }
+    .row-bottom {
+      display: flex;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+    }
+
+    .hole-wrapper {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .key-label {
+      font-size: 18px;
+      font-weight: bold;
+      margin-top: 4px;
+      color: #333;
+    }
+
+    .hole {
+      position: relative;
+      width: 95px;
+      height: 95px;
+      background: #5d4037;
+      border-radius: 50%;
+      overflow: hidden;
+      cursor: pointer;
+      box-shadow: inset 0 6px 8px rgba(0,0,0,0.5), 0 4px 0 rgba(0,0,0,0.3);
+      transition: transform 0.1s;
+    }
+    .hole:active, .hole.pressed {
+      transform: scale(0.92);
+    }
+
+    /* ボタンの色付け */
+    .color-white  { border: 6px solid #ffffff; }
+    .color-green  { border: 6px solid #4caf50; }
+    .color-red    { border: 6px solid #f44336; }
+    .color-yellow { border: 6px solid #ffeb3b; }
+    .color-blue   { border: 6px solid #2196f3; }
+
+    .mole {
+      position: absolute;
+      bottom: -100%;
+      left: 10%;
+      width: 80%;
+      height: 85%;
+      background: #8d6e63;
+      border: 3px solid #4e342e;
+      border-radius: 50% 50% 20% 20%;
+      transition: bottom 0.2s ease-out;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .mole::after {
+      content: '🐹';
+      font-size: 48px;
+      line-height: 1;
+    }
+
+    .mole.up {
+      bottom: 5%;
+    }
+
+    .mole.hit::after {
+      content: '⭐';
+      font-size: 48px;
+    }
+
+    /* 戻るボタン */
+    .btn-group {
+      margin-top: 20px;
+      display: flex;
+      justify-content: center;
+    }
+
+    .btn-back {
+      font-size: 22px;
+      font-weight: bold;
+      padding: 12px 30px;
+      background: #78909c;
+      color: white;
+      border: none;
+      border-radius: 30px;
+      cursor: pointer;
+      box-shadow: 0 4px 0 #455a64;
+    }
+    .btn-back:active {
+      transform: translateY(2px);
+      box-shadow: 0 2px 0 #455a64;
+    }
+  </style>
+</head>
+<body>
+
+  <h1>介護用 モグラたたき Deluxe</h1>
+
+  <!-- ================= メニュー画面 ================= -->
+  <div id="menuScreen" class="screen active">
+    <div class="menu-card">
+      <div class="menu-title">🎮 プレイ人数</div>
+      <div class="option-group">
+        <button class="opt-btn selected" id="mode1P" onclick="selectMode('1P')">1人プレイ</button>
+        <button class="opt-btn" id="mode2P" onclick="selectMode('2P')">2人対戦 (対戦)</button>
+      </div>
+
+      <div class="menu-title">⚡ むずかしさ</div>
+      <div class="option-group">
+        <button class="opt-btn selected" id="diffEasy" onclick="selectDiff('easy')">かんたん (2.5秒)</button>
+        <button class="opt-btn" id="diffNormal" onclick="selectDiff('normal')">ふつう (1.8秒)</button>
+        <button class="opt-btn" id="diffHard" onclick="selectDiff('hard')">むずかしい (1.2秒)</button>
+      </div>
+
+      <button class="start-menu-btn" onclick="startGame()">ゲームスタート！</button>
+
+      <div class="key-guide-box">
+        <strong>⌨️ キーボード操作の対応:</strong><br>
+        ・<strong>1P (または左側):</strong> A(白), B(緑), C(赤), D(黄), E(青)<br>
+        ・<strong>2P (右側):</strong> J(白), K(緑), L(赤), M(黄), N(青)
+      </div>
+    </div>
+  </div>
+
+  <!-- ================= ゲーム画面 ================= -->
+  <div id="gameScreen" class="screen">
+    
+    <div class="score-container">
+      <div class="score-board" id="boardP1">
+        <span id="p1Label">1P</span>: <span id="score1">0</span> / <span id="maxScoreText1">20</span> つ
+      </div>
+      <div class="score-board p2-board" id="boardP2" style="display: none;">
+        2P: <span id="score2">0</span> / <span id="maxScoreText2">20</span> つ
+      </div>
+    </div>
+
+    <div class="game-area">
+      <!-- 1P エリア -->
+      <div class="player-zone" id="zoneP1">
+        <div class="player-tag" id="tagP1">1P</div>
+        <div class="hole-container" id="p1Holes">
+          <div class="row-top">
+            <div class="hole-wrapper">
+              <div class="hole color-white" data-p="1" data-key="a"><div class="mole"></div></div>
+              <div class="key-label">しろ (A)</div>
+            </div>
+            <div class="hole-wrapper">
+              <div class="hole color-green" data-p="1" data-key="b"><div class="mole"></div></div>
+              <div class="key-label">みどり (B)</div>
+            </div>
+          </div>
+          <div class="row-bottom">
+            <div class="hole-wrapper">
+              <div class="hole color-red" data-p="1" data-key="c"><div class="mole"></div></div>
+              <div class="key-label">あか (C)</div>
+            </div>
+            <div class="hole-wrapper">
+              <div class="hole color-yellow" data-p="1" data-key="d"><div class="mole"></div></div>
+              <div class="key-label">きいろ (D)</div>
+            </div>
+            <div class="hole-wrapper">
+              <div class="hole color-blue" data-p="1" data-key="e"><div class="mole"></div></div>
+              <div class="key-label">あお (E)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- 2P エリア (初期は非表示) -->
+      <div class="player-zone p2-zone" id="zoneP2" style="display: none;">
+        <div class="player-tag">2P</div>
+        <div class="hole-container" id="p2Holes">
+          <div class="row-top">
+            <div class="hole-wrapper">
+              <div class="hole color-white" data-p="2" data-key="j"><div class="mole"></div></div>
+              <div class="key-label">しろ (J)</div>
+            </div>
+            <div class="hole-wrapper">
+              <div class="hole color-green" data-p="2" data-key="k"><div class="mole"></div></div>
+              <div class="key-label">みどり (K)</div>
+            </div>
+          </div>
+          <div class="row-bottom">
+            <div class="hole-wrapper">
+              <div class="hole color-red" data-p="2" data-key="l"><div class="mole"></div></div>
+              <div class="key-label">あか (L)</div>
+            </div>
+            <div class="hole-wrapper">
+              <div class="hole color-yellow" data-p="2" data-key="m"><div class="mole"></div></div>
+              <div class="key-label">きいろ (M)</div>
+            </div>
+            <div class="hole-wrapper">
+              <div class="hole color-blue" data-p="2" data-key="n"><div class="mole"></div></div>
+              <div class="key-label">あお (N)</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="btn-group">
+      <button class="btn-back" onclick="quitGame()">メニューへもどる</button>
+    </div>
+
+  </div>
+
+  <script>
+    // --- ゲーム設定・状態 ---
+    let selectedMode = '1P'; // '1P' or '2P'
+    let selectedDiff = 'easy'; // 'easy', 'normal', 'hard'
+
+    const DIFF_SETTINGS = {
+      easy: { stayTime: 2500, nextDelay: 600, speedCss: '0.3s' },
+      normal: { stayTime: 1800, nextDelay: 400, speedCss: '0.2s' },
+      hard: { stayTime: 1200, nextDelay: 250, speedCss: '0.15s' }
+    };
+
+    const TARGET_SCORE = 20;
+
+    let isPlaying = false;
+
+    // プレイヤー状態管理
+    const state = {
+      1: { score: 0, isActive: false, timer: null, nextTimer: null, lastHole: null },
+      2: { score: 0, isActive: false, timer: null, nextTimer: null, lastHole: null }
+    };
+
+    // --- 音声 (Web Audio API) ---
+    let audioCtx = null;
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    function playSound(type) {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+
+      if (type === 'hit') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.connect(gain); gain.connect(audioCtx.destination);
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(350, now);
+        osc.frequency.exponentialRampToValueAtTime(700, now + 0.15);
+        gain.gain.setValueAtTime(0.4, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.2);
+        osc.start(now); osc.stop(now + 0.2);
+      } else if (type === 'clear') {
+        [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.1);
+          gain.gain.setValueAtTime(0.3, now + idx * 0.1);
+          gain.gain.linearRampToValueAtTime(0, now + idx * 0.1 + 0.2);
+          osc.start(now + idx * 0.1); osc.stop(now + idx * 0.1 + 0.2);
+        });
+      }
+    }
+
+    // --- メニュー操作 ---
+    function selectMode(mode) {
+      selectedMode = mode;
+      document.getElementById('mode1P').classList.toggle('selected', mode === '1P');
+      document.getElementById('mode2P').classList.toggle('selected', mode === '2P');
+    }
+
+    function selectDiff(diff) {
+      selectedDiff = diff;
+      document.getElementById('diffEasy').classList.toggle('selected', diff === 'easy');
+      document.getElementById('diffNormal').classList.toggle('selected', diff === 'normal');
+      document.getElementById('diffHard').classList.toggle('selected', diff === 'hard');
+    }
+
+    // --- ゲーム開始・終了 ---
+    function startGame() {
+      initAudio();
+
+      // 画面切り替え
+      document.getElementById('menuScreen').classList.remove('active');
+      document.getElementById('gameScreen').classList.add('active');
+
+      // 状態リセット
+      isPlaying = true;
+      [1, 2].forEach(p => {
+        state[p].score = 0;
+        state[p].isActive = false;
+        clearTimeout(state[p].timer);
+        clearTimeout(state[p].nextTimer);
+      });
+
+      // 表示切り替え (2Pモードかどうか)
+      const boardP2 = document.getElementById('boardP2');
+      const zoneP2 = document.getElementById('zoneP2');
+      const p1Label = document.getElementById('p1Label');
+      
+      if (selectedMode === '2P') {
+        boardP2.style.display = 'inline-block';
+        zoneP2.style.display = 'block';
+        p1Label.textContent = '1P';
+      } else {
+        boardP2.style.display = 'none';
+        zoneP2.style.display = 'none';
+        p1Label.textContent = 'スコア';
+      }
+
+      document.getElementById('score1').textContent = '0';
+      document.getElementById('score2').textContent = '0';
+      document.getElementById('maxScoreText1').textContent = TARGET_SCORE;
+      document.getElementById('maxScoreText2').textContent = TARGET_SCORE;
+
+      // アニメーション速度更新
+      const speed = DIFF_SETTINGS[selectedDiff].speedCss;
+      document.querySelectorAll('.mole').forEach(m => {
+        m.style.transition = `bottom ${speed} ease-out`;
+        m.classList.remove('up', 'hit');
+      });
+
+      // 出現開始
+      popupMole(1);
+      if (selectedMode === '2P') {
+        popupMole(2);
+      }
+    }
+
+    function quitGame() {
+      isPlaying = false;
+      [1, 2].forEach(p => {
+        clearTimeout(state[p].timer);
+        clearTimeout(state[p].nextTimer);
+        state[p].isActive = false;
+      });
+
+      document.querySelectorAll('.mole').forEach(m => m.classList.remove('up', 'hit'));
+
+      document.getElementById('gameScreen').classList.remove('active');
+      document.getElementById('menuScreen').classList.add('active');
+    }
+
+    // --- モグラ制御 ---
+    function getRandomHole(p) {
+      const holes = document.querySelectorAll(`.hole[data-p="${p}"]`);
+      let idx = Math.floor(Math.random() * holes.length);
+      let hole = holes[idx];
+      if (hole === state[p].lastHole) {
+        return getRandomHole(p);
+      }
+      state[p].lastHole = hole;
+      return hole;
+    }
+
+    function popupMole(p) {
+      if (!isPlaying || state[p].isActive) return;
+
+      state[p].isActive = true;
+      const hole = getRandomHole(p);
+      const mole = hole.querySelector('.mole');
+
+      mole.classList.remove('hit');
+      mole.classList.add('up');
+      mole.dataset.hit = "false";
+
+      const setting = DIFF_SETTINGS[selectedDiff];
+
+      state[p].timer = setTimeout(() => {
+        mole.classList.remove('up');
+        state[p].isActive = false;
+
+        if (isPlaying) {
+          state[p].nextTimer = setTimeout(() => popupMole(p), setting.nextDelay);
+        }
+      }, setting.stayTime);
+    }
+
+    function bonkMole(p, mole) {
+      if (!isPlaying || mole.dataset.hit === "true" || !mole.classList.contains('up')) return;
+
+      mole.dataset.hit = "true";
+      state[p].score++;
+      document.getElementById(`score${p}`).textContent = state[p].score;
+
+      playSound('hit');
+      mole.classList.add('hit');
+
+      clearTimeout(state[p].timer);
+
+      // ゴール判定
+      if (state[p].score >= TARGET_SCORE) {
+        setTimeout(() => finishGame(p), 300);
+        return;
+      }
+
+      const setting = DIFF_SETTINGS[selectedDiff];
+      setTimeout(() => {
+        mole.classList.remove('up', 'hit');
+        state[p].isActive = false;
+        if (isPlaying) {
+          state[p].nextTimer = setTimeout(() => popupMole(p), setting.nextDelay);
+        }
+      }, 250);
+    }
+
+    function finishGame(winnerP) {
+      isPlaying = false;
+      [1, 2].forEach(p => {
+        clearTimeout(state[p].timer);
+        clearTimeout(state[p].nextTimer);
+      });
+
+      playSound('clear');
+
+      setTimeout(() => {
+        if (selectedMode === '2P') {
+          alert(`🎉 決着！ 🎉
+
+${winnerP}P の勝ちです！おめでとうございます！👏`);
+        } else {
+          alert(`🎉 すごい！ゴールです！ 🎉
+
+${TARGET_SCORE} 回たたいて大成功！お疲れ様でした！`);
+        }
+        quitGame();
+      }, 100);
+    }
+
+    // --- イベントリスナー ---
+    // タッチ・クリック操作
+    document.querySelectorAll('.hole').forEach(hole => {
+      const p = hole.dataset.p;
+      const mole = hole.querySelector('.mole');
+
+      const handleHit = (e) => {
+        if (e.cancelable) e.preventDefault();
+        bonkMole(p, mole);
+      };
+
+      mole.addEventListener('touchstart', handleHit, { passive: false });
+      mole.addEventListener('mousedown', handleHit);
+    });
+
+    // キーボード操作
+    window.addEventListener('keydown', (e) => {
+      initAudio();
+      if (e.repeat || !isPlaying) return;
+
+      const key = e.key.toLowerCase();
+      const targetHole = document.querySelector(`.hole[data-key="${key}"]`);
+
+      if (targetHole) {
+        const p = targetHole.dataset.p;
+        targetHole.classList.add('pressed');
+        setTimeout(() => targetHole.classList.remove('pressed'), 150);
+
+        const mole = targetHole.querySelector('.mole');
+        bonkMole(p, mole);
+      }
+    });
+  </script>
+</body>
+</html>

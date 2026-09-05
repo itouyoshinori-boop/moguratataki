@@ -125,7 +125,7 @@
       padding: 8px 18px;
       border-radius: 15px;
       box-shadow: 0 4px 6px rgba(0,0,0,0.1);
-      min-width: 200px;
+      min-width: 220px;
     }
     .score-board span { color: #d81b60; font-size: 32px; }
     .score-board.p2-board { border-color: #64b5f6; }
@@ -248,6 +248,47 @@
       font-size: 48px;
     }
 
+    .mole.fast-hit::after {
+      content: '🔥';
+      font-size: 48px;
+    }
+
+    /* ポップアップ加点テキスト（+2 / +1） */
+    .score-popup {
+      position: absolute;
+      top: -20px;
+      left: 50%;
+      transform: translateX(-50%);
+      font-size: 28px;
+      font-weight: 900;
+      pointer-events: none;
+      animation: popupAnim 0.6s ease-out forwards;
+      z-index: 10;
+    }
+    .score-popup.normal {
+      color: #ff9800;
+      text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff;
+    }
+    .score-popup.bonus {
+      color: #e91e63;
+      text-shadow: 2px 2px 0 #fff, -2px -2px 0 #fff, 2px -2px 0 #fff, -2px 2px 0 #fff;
+      font-size: 34px;
+    }
+
+    @keyframes popupAnim {
+      0% {
+        opacity: 1;
+        transform: translate(-50%, 10px) scale(0.8);
+      }
+      50% {
+        transform: translate(-50%, -20px) scale(1.3);
+      }
+      100% {
+        opacity: 0;
+        transform: translate(-50%, -40px) scale(1);
+      }
+    }
+
     /* 戻るボタン */
     .btn-group {
       margin-top: 20px;
@@ -295,6 +336,9 @@
       <button class="start-menu-btn" onclick="startGame()">ゲームスタート！</button>
 
       <div class="key-guide-box">
+        <strong>⚡ スコアの追加（ボーナス機能）:</strong><br>
+        ・通常ヒット: <strong>+1 点</strong><br>
+        ・素早く叩いた時 (0.8秒以内): <strong>+2 点 (ボーナス!) 🔥</strong><br><br>
         <strong>⌨️ キーボード操作の対応:</strong><br>
         ・<strong>1P (または左側):</strong> A(白), B(緑), C(赤), D(黄), E(青)<br>
         ・<strong>2P (右側):</strong> J(白), K(緑), L(赤), M(黄), N(青)
@@ -307,10 +351,10 @@
     
     <div class="score-container">
       <div class="score-board" id="boardP1">
-        <span id="p1Label">1P</span>: <span id="score1">0</span> / <span id="maxScoreText1">20</span> つ
+        <span id="p1Label">1P</span>: <span id="score1">0</span> / <span id="maxScoreText1">20</span> 点
       </div>
       <div class="score-board p2-board" id="boardP2" style="display: none;">
-        2P: <span id="score2">0</span> / <span id="maxScoreText2">20</span> つ
+        2P: <span id="score2">0</span> / <span id="maxScoreText2">20</span> 点
       </div>
     </div>
 
@@ -396,13 +440,14 @@
     };
 
     const TARGET_SCORE = 20;
+    const FAST_HIT_THRESHOLD = 800; // 出現から800ms以内ならボーナス
 
     let isPlaying = false;
 
     // プレイヤー状態管理
     const state = {
-      1: { score: 0, isActive: false, timer: null, nextTimer: null, lastHole: null },
-      2: { score: 0, isActive: false, timer: null, nextTimer: null, lastHole: null }
+      1: { score: 0, isActive: false, popTime: 0, timer: null, nextTimer: null, lastHole: null },
+      2: { score: 0, isActive: false, popTime: 0, timer: null, nextTimer: null, lastHole: null }
     };
 
     // --- 音声 (Web Audio API) ---
@@ -425,6 +470,18 @@
         gain.gain.setValueAtTime(0.4, now);
         gain.gain.linearRampToValueAtTime(0, now + 0.2);
         osc.start(now); osc.stop(now + 0.2);
+      } else if (type === 'bonus') {
+        // 高速打撃時のスペシャルサウンド
+        [523.25, 659.25, 880.00].forEach((freq, idx) => {
+          const osc = audioCtx.createOscillator();
+          const gain = audioCtx.createGain();
+          osc.connect(gain); gain.connect(audioCtx.destination);
+          osc.type = 'triangle';
+          osc.frequency.setValueAtTime(freq, now + idx * 0.06);
+          gain.gain.setValueAtTime(0.4, now + idx * 0.06);
+          gain.gain.linearRampToValueAtTime(0, now + idx * 0.06 + 0.15);
+          osc.start(now + idx * 0.06); osc.stop(now + idx * 0.06 + 0.15);
+        });
       } else if (type === 'clear') {
         [523.25, 659.25, 783.99, 1046.50].forEach((freq, idx) => {
           const osc = audioCtx.createOscillator();
@@ -466,6 +523,7 @@
       [1, 2].forEach(p => {
         state[p].score = 0;
         state[p].isActive = false;
+        state[p].popTime = 0;
         clearTimeout(state[p].timer);
         clearTimeout(state[p].nextTimer);
       });
@@ -494,7 +552,7 @@
       const speed = DIFF_SETTINGS[selectedDiff].speedCss;
       document.querySelectorAll('.mole').forEach(m => {
         m.style.transition = `bottom ${speed} ease-out`;
-        m.classList.remove('up', 'hit');
+        m.classList.remove('up', 'hit', 'fast-hit');
       });
 
       // 出現開始
@@ -512,7 +570,7 @@
         state[p].isActive = false;
       });
 
-      document.querySelectorAll('.mole').forEach(m => m.classList.remove('up', 'hit'));
+      document.querySelectorAll('.mole').forEach(m => m.classList.remove('up', 'hit', 'fast-hit'));
 
       document.getElementById('gameScreen').classList.remove('active');
       document.getElementById('menuScreen').classList.add('active');
@@ -537,9 +595,10 @@
       const hole = getRandomHole(p);
       const mole = hole.querySelector('.mole');
 
-      mole.classList.remove('hit');
+      mole.classList.remove('hit', 'fast-hit');
       mole.classList.add('up');
       mole.dataset.hit = "false";
+      state[p].popTime = Date.now(); // 出現時刻を記録
 
       const setting = DIFF_SETTINGS[selectedDiff];
 
@@ -557,11 +616,26 @@
       if (!isPlaying || mole.dataset.hit === "true" || !mole.classList.contains('up')) return;
 
       mole.dataset.hit = "true";
-      state[p].score++;
-      document.getElementById(`score${p}`).textContent = state[p].score;
+      const reactTime = Date.now() - state[p].popTime;
+      const hole = mole.parentElement;
 
-      playSound('hit');
-      mole.classList.add('hit');
+      let addedScore = 1;
+      let isFast = reactTime <= FAST_HIT_THRESHOLD;
+
+      if (isFast) {
+        addedScore = 2; // 早いたたき：2点ボーナス！
+        playSound('bonus');
+        mole.classList.add('fast-hit');
+        showScorePopup(hole, '+2 🔥', true);
+      } else {
+        addedScore = 1; // 通常ヒット：1点
+        playSound('hit');
+        mole.classList.add('hit');
+        showScorePopup(hole, '+1', false);
+      }
+
+      state[p].score += addedScore;
+      document.getElementById(`score${p}`).textContent = state[p].score;
 
       clearTimeout(state[p].timer);
 
@@ -573,12 +647,23 @@
 
       const setting = DIFF_SETTINGS[selectedDiff];
       setTimeout(() => {
-        mole.classList.remove('up', 'hit');
+        mole.classList.remove('up', 'hit', 'fast-hit');
         state[p].isActive = false;
         if (isPlaying) {
           state[p].nextTimer = setTimeout(() => popupMole(p), setting.nextDelay);
         }
       }, 250);
+    }
+
+    function showScorePopup(hole, text, isBonus) {
+      const popup = document.createElement('div');
+      popup.className = `score-popup ${isBonus ? 'bonus' : 'normal'}`;
+      popup.textContent = text;
+      hole.appendChild(popup);
+
+      setTimeout(() => {
+        popup.remove();
+      }, 600);
     }
 
     function finishGame(winnerP) {
@@ -596,9 +681,9 @@
 
 ${winnerP}P の勝ちです！おめでとうございます！👏`);
         } else {
-          alert(`🎉 すごい！ゴールです！ 🎉
+          alert(`🎉 すごい！目標達成です！ 🎉
 
-${TARGET_SCORE} 回たたいて大成功！お疲れ様でした！`);
+${state[1].score} 点獲得で大成功！お疲れ様でした！`);
         }
         quitGame();
       }, 100);
